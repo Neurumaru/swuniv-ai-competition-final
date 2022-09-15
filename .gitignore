@@ -2,3 +2,4 @@ inputs/
 outputs/
 logs.log
 papers/
+__pycache__/
