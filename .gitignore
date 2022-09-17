@@ -3,6 +3,7 @@ outputs/
 processing/
 __pycache__/
 saved_models/
+*.ttf
 
 **/saved_models/*
 **/data_lmdb_release/*
