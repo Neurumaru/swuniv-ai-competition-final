@@ -3,6 +3,7 @@ outputs/
 processing/
 __pycache__/
 saved_models/
+results/
 *.ttf
 
 **/saved_models/*
