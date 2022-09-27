@@ -5,7 +5,10 @@ resources/
 __pycache__/
 saved_models/
 results/
+data_root_dir/
+exp/
 *.ttf
+test.*
 
 **/saved_models/*
 **/data_lmdb_release/*
