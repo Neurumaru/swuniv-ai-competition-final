@@ -4,11 +4,15 @@ processing/
 resources/
 __pycache__/
 saved_models/
-results/
+result/
+history/
 data_root_dir/
 exp/
 *.ttf
+*.ttc
 test.*
+*.h5
+*.tar.gz
 
 **/saved_models/*
 **/data_lmdb_release/*
@@ -18,7 +22,6 @@ test.*
 *.pth
 *.tar
 *.sh
-*.txt
 *.ipynb
 *.zip
 *.eps
