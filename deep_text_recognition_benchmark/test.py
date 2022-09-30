@@ -1,5 +1,6 @@
 ﻿import os
 import time
+import shutil
 import string
 import argparse
 import re
@@ -86,6 +87,10 @@ def validation(model, criterion, evaluation_loader, converter, opt):
     infer_time = 0
     valid_loss_avg = Averager()
 
+    preds_str_list = []
+    labels_list = []
+    confidence_score_list = []
+
     for i, (image_tensors, labels) in enumerate(evaluation_loader):
         batch_size = image_tensors.size(0)
         length_of_data = length_of_data + batch_size
@@ -136,7 +141,6 @@ def validation(model, criterion, evaluation_loader, converter, opt):
         # calculate accuracy & confidence score
         preds_prob = F.softmax(preds, dim=2)
         preds_max_prob, _ = preds_prob.max(dim=2)
-        confidence_score_list = []
         for gt, pred, pred_max_prob in zip(labels, preds_str, preds_max_prob):
             if 'Attn' in opt.Prediction:
                 gt = gt[:gt.find('[s]')]
@@ -155,6 +159,8 @@ def validation(model, criterion, evaluation_loader, converter, opt):
 
             if pred == gt:
                 n_correct += 1
+            labels_list.append(gt)
+            preds_str_list.append(pred)
 
             '''
             (old version) ICDAR2017 DOST Normalized Edit Distance https://rrc.cvc.uab.es/?ch=7&com=tasks
@@ -184,7 +190,7 @@ def validation(model, criterion, evaluation_loader, converter, opt):
     accuracy = n_correct / float(length_of_data) * 100
     norm_ED = norm_ED / float(length_of_data)  # ICDAR2019 Normalized Edit Distance
 
-    return valid_loss_avg.val(), accuracy, norm_ED, preds_str, confidence_score_list, labels, infer_time, length_of_data
+    return valid_loss_avg.val(), accuracy, norm_ED, preds_str_list, confidence_score_list, labels_list, infer_time, length_of_data
 
 
 def test(opt):
@@ -211,7 +217,8 @@ def test(opt):
 
     """ keep evaluation model and result logs """
     os.makedirs(f'./result/{opt.exp_name}', exist_ok=True)
-    os.system(f'cp {opt.saved_model} ./result/{opt.exp_name}/')
+    shutil.copy(f'{opt.saved_model}', f'./result/{opt.exp_name}/{os.path.basename(opt.saved_model)}')
+    # os.system(f'cp {opt.saved_model} ./result/{opt.exp_name}/')
 
     """ setup loss """
     if 'CTC' in opt.Prediction:
@@ -225,7 +232,7 @@ def test(opt):
         if opt.benchmark_all_eval:  # evaluation with 10 benchmark evaluation datasets
             benchmark_all_eval(model, criterion, converter, opt)
         else:
-            log = open(f'./result/{opt.exp_name}/log_evaluation.txt', 'a')
+            log = open(f'./result/{opt.exp_name}/log_evaluation.txt', 'w')
             AlignCollate_evaluation = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
             eval_data, eval_data_log = hierarchical_dataset(root=opt.eval_data, opt=opt)
             evaluation_loader = torch.utils.data.DataLoader(
@@ -233,11 +240,10 @@ def test(opt):
                 shuffle=False,
                 num_workers=int(opt.workers),
                 collate_fn=AlignCollate_evaluation, pin_memory=True)
-            _, accuracy_by_best_model, _, _, _, _, _, _ = validation(
+            _, _, _, preds, confidence_score, labels, _, _ = validation(
                 model, criterion, evaluation_loader, converter, opt)
-            log.write(eval_data_log)
-            print(f'{accuracy_by_best_model:0.3f}')
-            log.write(f'{accuracy_by_best_model:0.3f}\n')
+            for label, pred, confidence in zip(labels, preds, confidence_score):
+                log.write(f'{confidence:0.3f}\t{label}\t{pred}\n')
             log.close()
 
 
@@ -245,11 +251,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--eval_data', required=True, help='path to evaluation dataset')
     parser.add_argument('--benchmark_all_eval', action='store_true', help='evaluate 10 benchmark evaluation datasets')
-    parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
+    parser.add_argument('--workers', type=int, help='number of data loading workers', default=0)
     parser.add_argument('--batch_size', type=int, default=192, help='input batch size')
     parser.add_argument('--saved_model', required=True, help="path to saved_model to evaluation")
     """ Data processing """
-    parser.add_argument('--batch_max_length', type=int, default=25, help='maximum-label-length')
+    parser.add_argument('--batch_max_length', type=int, default=30, help='maximum-label-length')
     parser.add_argument('--imgH', type=int, default=32, help='the height of the input image')
     parser.add_argument('--imgW', type=int, default=100, help='the width of the input image')
     parser.add_argument('--rgb', action='store_true', help='use rgb input')
