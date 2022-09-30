@@ -13,6 +13,7 @@ exp/
 test.*
 *.h5
 *.tar.gz
+*.cp
 
 **/saved_models/*
 **/data_lmdb_release/*
