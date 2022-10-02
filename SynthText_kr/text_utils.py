@@ -6,7 +6,6 @@ import os.path as osp
 import random, os
 import cv2
 #import cPickle as cp
-# import _pickle as cp
 import pickle as cp
 import scipy.signal as ssig
 import scipy.stats as sstat
@@ -16,13 +15,7 @@ from pygame import freetype
 from PIL import Image
 import math
 from common import *
-
-# def is_korean(ch):
-#     if u'\uAC00' <= kr <=u'\uD7AF':
-#         return True
-#     else:
-#         return False
-
+import pickle
 
 def sample_weighted(p_dict):
     ps = list(p_dict.keys())
@@ -99,7 +92,7 @@ class RenderFont(object):
         self.max_shrink_trials = 5 # 0.9^5 ~= 0.6
         # the minimum number of characters that should fit in a mask
         # to define the maximum font height.
-        self.min_nchar = 1
+        self.min_nchar = 2
         self.min_font_h = 16 #px : 0.6*12 ~ 7px <= actual minimum height
         self.max_font_h = 120 #px
         self.p_flat = 0.10
@@ -108,13 +101,9 @@ class RenderFont(object):
         self.p_curved = 1.0
         self.baselinestate = BaselineState()
 
-        # # text-source : gets english text:
-        # self.text_source = TextSource(min_nchar=self.min_nchar,
-        #                               fn=osp.join(data_dir,'newsgroup/newsgroup.txt'))
-
+        # text-source : gets english text:
         self.text_source = TextSource(min_nchar=self.min_nchar,
                                       fn=osp.join(data_dir,'newsgroup/newsgroup.txt'))
-
 
         # get font-state object:
         self.font_state = FontState(data_dir)
@@ -155,8 +144,8 @@ class RenderFont(object):
                 else:
                     # render the character
                     ch_bounds = font.render_to(surf, (x,y), ch)
-                    ch_bounds.x = x + ch_bounds.x
-                    ch_bounds.y = y - ch_bounds.y
+                    # ch_bounds.x = x + ch_bounds.x
+                    # ch_bounds.y = y - ch_bounds.y
                     x += ch_bounds.width
                     bbs.append(np.array(ch_bounds))
 
@@ -166,7 +155,6 @@ class RenderFont(object):
 
         # get the words:
         words = ' '.join(text.split())
-        # words=words.decode('utf-8')
 
         # crop the surface to fit the text:
         bbs = np.array(bbs)
@@ -181,35 +169,51 @@ class RenderFont(object):
         """
         wl = len(word_text)
         isword = len(word_text.split())==1
+        # print(word_text)
+        # do curved if the length of the word <= 10
 
-        # do curved iff, the length of the word <= 10
         if not isword or wl > 10 or np.random.rand() > self.p_curved:
             return self.render_multiline(font, word_text)
-
+        # print(word_text)
         # create the surface:
         lspace = font.get_sized_height() + 1
+        # print(lspace)
         lbound = font.get_rect(word_text)
+        # print(lbound)
+        # print(lbound.width)
         fsize = (round(2.0*lbound.width), round(3*lspace))
         surf = pygame.Surface(fsize, pygame.locals.SRCALPHA, 32)
-
+        # print(surf)
         # baseline state
         mid_idx = wl//2
         BS = self.baselinestate.get_sample()
+        # print(BS)
         curve = [BS['curve'](i-mid_idx) for i in range(wl)]
         curve[mid_idx] = -np.sum(curve) / (wl-1)
-        rots  = [-int(math.degrees(math.atan(BS['diff'](i-mid_idx)/(font.size/2)))) for i in range(wl)]
-
+        rots = [-int(math.degrees(math.atan(BS['diff'](i-mid_idx)/(font.size/2)))) for i in range(wl)]
+        # print(rots)
         bbs = []
         # place middle char
         rect = font.get_rect(word_text[mid_idx])
+        # print(surf)
+        # print(rect)
         rect.centerx = surf.get_rect().centerx
+        # print(rect.centerx)
         rect.centery = surf.get_rect().centery + rect.height
-        rect.centery +=  curve[mid_idx]
-        ch_bounds = font.render_to(surf, rect, word_text[mid_idx], rotation=rots[mid_idx])
-        ch_bounds.x = rect.x + ch_bounds.x
-        ch_bounds.y = rect.y - ch_bounds.y
-        mid_ch_bb = np.array(ch_bounds)
+        # print(rect.centery)
+        rect.centery += curve[mid_idx]
+        # print(rect.centery)
 
+        ch_bounds = font.render_to(surf, rect, word_text[mid_idx], rotation=rots[mid_idx])
+        # print(rect)
+        # print(ch_bounds)
+
+        # ch_bounds.x = rect.x + ch_bounds.x
+        # print(ch_bounds.x)
+        # ch_bounds.y = rect.y - ch_bounds.y
+        # print(ch_bounds.y)
+        mid_ch_bb = np.array(ch_bounds)
+        # print(mid_ch_bb)
         # render chars to the left and right:
         last_rect = rect
         ch_idx = []
@@ -239,8 +243,8 @@ class RenderFont(object):
                 bbrect = font.render_to(surf, newrect, ch, rotation=rots[i])
             except ValueError:
                 bbrect = font.render_to(surf, newrect, ch)
-            bbrect.x = newrect.x + bbrect.x
-            bbrect.y = newrect.y - bbrect.y
+            # bbrect.x = newrect.x + bbrect.x
+            # bbrect.y = newrect.y - bbrect.y
             bbs.append(np.array(bbrect))
             last_rect = newrect
         
@@ -258,7 +262,9 @@ class RenderFont(object):
         bbs = np.array(bbs)
         surf_arr, bbs = crop_safe(pygame.surfarray.pixels_alpha(surf), rect_union, bbs, pad=5)
         surf_arr = surf_arr.swapaxes(0,1)
-
+        # cv2.imshow('abc', surf_arr)
+        # cv2.waitKey()
+        # cv2.destroyAllWindows()
         return surf_arr, word_text, bbs
 
 
@@ -299,7 +305,11 @@ class RenderFont(object):
             # blit the text onto the canvas
             w,h = text_arrs[i].shape
             out_arr[loc[0]:loc[0]+w,loc[1]:loc[1]+h] += text_arrs[i]
-
+            # print(locs)
+            # print(order)
+            # cv2.imshow('abc', out_arr)
+            # cv2.waitKey()
+            # cv2.destroyAllWindows()
         return out_arr, locs, bbs, order
 
     def robust_HW(self,mask):
@@ -340,6 +350,9 @@ class RenderFont(object):
         in the mask -- 255 for unsafe, 0 for safe.
         The text is rendered using FONT, the text content is TEXT.
         """
+        # cv2.imshow('abc', mask)
+        # cv2.waitKey()
+        # cv2.destroyAllWindows()
         #H,W = mask.shape
         H,W = self.robust_HW(mask)
         f_asp = self.font_state.get_aspect_ratio(font)
@@ -383,6 +396,8 @@ class RenderFont(object):
             #print colorize(Color.GREEN, text)
 
             # render the text:
+            # print(font)
+            # print(text)
             txt_arr,txt,bb = self.render_curved(font, text)
             bb = self.bb_xywh2coords(bb)
 
@@ -392,7 +407,7 @@ class RenderFont(object):
                 continue
 
             # position the text within the mask:
-            text_mask,loc,bb, _ = self.place_text([txt_arr], mask, [bb])
+            text_mask, loc, bb, _ = self.place_text([txt_arr], mask, [bb])
             if len(loc) > 0:#successful in placing the text collision-free:
                 return text_mask,loc[0],bb[0],text
         return #None
@@ -401,7 +416,7 @@ class RenderFont(object):
     def visualize_bb(self, text_arr, bbs):
         ta = text_arr.copy()
         for r in bbs:
-            cv.rectangle(ta, (r[0],r[1]), (r[0]+r[2],r[1]+r[3]), color=128, thickness=1)
+            cv2.rectangle(ta, (r[0],r[1]), (r[0]+r[2],r[1]+r[3]), color=128, thickness=1)
         plt.imshow(ta,cmap='gray')
         plt.show()
 
@@ -425,36 +440,26 @@ class FontState(object):
     random_kerning = 0.2
     random_kerning_amount = 0.1
 
-    def __init__(self, data_dir='mydata'):
-    # def __init__(self, data_dir='ori_data'):
+    def __init__(self, data_dir='data'):
 
-        # char_freq_path = osp.join(data_dir, 'models/char_freq.cp')        
+        char_freq_path = osp.join(data_dir, 'models/char_freq.cp')        
         font_model_path = osp.join(data_dir, 'models/font_px2pt.cp')
 
         # get character-frequencies in the English language:
-        # with open(char_freq_path,'rb') as f:
-        #     self.char_freq = cp.load(f)
-        #     u = cp.Unpickler(f)
-        #     u.encoding = 'latin1'
-        #     p = u.load()
-        #     self.char_freq = p
-
-        # get the model to convert from pixel to font pt size:
-        # with open(font_model_path,'rb') as f:
-        #     self.font_model = cp.load(f)
-        #     u = pickle._Unpickler(f)
-        #     u.encoding = 'latin1'
-        #     p = u.load()
-        #     p = cp.load(f)
-        #     self.font_model = p
-
-        # get character-frequencies in the English language:
-        # with open(char_freq_path,'rb') as f:
-            # self.char_freq = cp.load(f)
+        with open(char_freq_path,'rb') as f:
+            #self.char_freq = cp.load(f)
+            u = pickle._Unpickler(f)
+            u.encoding = 'latin1'
+            p = u.load()
+            self.char_freq = p
 
         # get the model to convert from pixel to font pt size:
         with open(font_model_path,'rb') as f:
-            self.font_model = cp.load(f)
+            #self.font_model = cp.load(f)
+            u = pickle._Unpickler(f)
+            u.encoding = 'latin1'
+            p = u.load()
+            self.font_model = p
             
         # get the names of fonts to use:
         self.FONT_LIST = osp.join(data_dir, 'fonts/fontlist.txt')
@@ -467,8 +472,8 @@ class FontState(object):
         """
         if size is None:
             size = 12 # doesn't matter as we take the RATIO
-        # chars = ''.join(self.char_freq.keys())
-        # w = np.array(self.char_freq.values())
+        chars = ''.join(self.char_freq.keys())
+        w = np.array(self.char_freq.values())
 
         # get the [height,width] of each character:
         try:
@@ -544,13 +549,9 @@ class TextSource(object):
         self.fdict = {'WORD':self.sample_word,
                       'LINE':self.sample_line,
                       'PARA':self.sample_para}
-        self.txt = []
-        with open(fn,'r') as f:
-            for l in f.readlines():
-                line=l.strip()
-                # line=line.decode('utf-8')
-                # print(line)
-                self.txt.append(line)
+
+        with open(fn,'r',encoding='utf=8') as f:
+            self.txt = [l.strip() for l in f.readlines()]
 
         # distribution over line/words for LINE/PARA:
         self.p_line_nline = np.array([0.85, 0.10, 0.05])
@@ -568,13 +569,6 @@ class TextSource(object):
                      txt is less than or equal to f (default=0.25).
         """
         return np.sum([not ch.isalnum() for ch in txt])/(len(txt)+0.0) <= f
-        # chcnt=0
-        # line=txt
-        # for ch in line:
-        #     if ch.isalnum() or is_korean(ch):
-        #         chcnt+=1
-        # return float(chcnt)/(len(txt)+0.0)>f
-                
 
     def is_good(self, txt, f=0.35):
         """
@@ -646,7 +640,6 @@ class TextSource(object):
             return lines
 
     def sample(self, nline_max,nchar_max,kind='WORD'):
-        # print('sample_output', self.fdict[kind](nline_max,nchar_max))
         return self.fdict[kind](nline_max,nchar_max)
         
     def sample_word(self,nline_max,nchar_max,niter=100):
@@ -660,7 +653,7 @@ class TextSource(object):
             words = rand_line.split()
             rand_word = random.choice(words)
             iter += 1
-            # print('sample_word_output',rand_word)
+
         if not self.is_good([rand_word])[0] or len(rand_word)>nchar_max:
             return []
         else:
@@ -678,7 +671,6 @@ class TextSource(object):
         nword = [max(1,int(np.ceil(n))) for n in nword]
 
         lines = self.get_lines(nline, nword, nchar_max, f=0.35)
-        # print('sample_line_output',lines)
         if lines is not None:
             return '\n'.join(lines)
         else:

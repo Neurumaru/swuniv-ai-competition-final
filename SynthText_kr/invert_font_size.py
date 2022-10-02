@@ -13,8 +13,7 @@ import cPickle as cp
 pygame.init()
 
 
-# ys = np.arange(8,200)
-ys = np.arange(100,200)
+ys = np.arange(8,200)
 A = np.c_[ys,np.ones_like(ys)]
 
 xs = []
@@ -22,13 +21,9 @@ models = {} #linear model
 
 FS = FontState()
 #plt.figure()
-#plt.hold(True)
-print(FS.fonts)
-
 for i in xrange(len(FS.fonts)):
-	print i
-	# font = freetype.Font(FS.fonts[i], size=12)
-	font = freetype.Font(FS.fonts[i], size=50)
+	print(i)
+	font = freetype.Font(FS.fonts[i], size=12)
 	h = []
 	for y in ys:
 		h.append(font.get_sized_glyph_height(y))
