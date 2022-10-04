@@ -368,12 +368,15 @@ class CustomDataset(CraftBaseDataset):
         self.gpu = gpu
 
     def load_img_gt_box(self, img_gt_box_path):
-        lines = open(img_gt_box_path, encoding="utf-8").readlines()
+        try:
+            lines = open(img_gt_box_path, encoding="utf-8").readlines()
+        except:
+            lines = open(img_gt_box_path).readlines()
         word_bboxes = []
         words = []
         for line in lines:
             box_info = line.strip().encode("utf-8").decode("utf-8-sig").split(",")
-            box_points = [int(box_info[i]) for i in range(8)]
+            box_points = [int(float(box_info[i])) for i in range(8)]
             box_points = np.array(box_points, np.float32).reshape(4, 2)
             word = box_info[8:]
             word = ",".join(word)

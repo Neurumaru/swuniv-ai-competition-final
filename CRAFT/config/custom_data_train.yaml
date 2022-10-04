@@ -14,7 +14,7 @@ train:
   synth_data_dir: "/data/SynthText/"
   synth_ratio: 5
   real_dataset: custom
-  ckpt_path: "./pretrained_model/CRAFT_clr_amp_29500.pth"
+  ckpt_path: "./exp/custom_data_train/CRAFT_clr_amp_29500.pth"
   eval_interval: 1000
   batch_size: 5
   st_iter: 0
@@ -29,8 +29,8 @@ train:
   neg_rto: 0.3
   n_min_neg: 5000
   data:
-    vis_opt: False
-    pseudo_vis_opt: False
+    vis_opt: True
+    pseudo_vis_opt: True
     output_size: 768
     do_not_care_label: ['###', '']
     mean: [0.485, 0.456, 0.406]
@@ -86,7 +86,7 @@ train:
         option: True
 
 test:
-  trained_model : null
+  trained_model : 'exp/custom_data_train/CRAFT_clr_amp_3000.pth'
   custom_data:
     test_set_size: 500
     test_data_dir: "./data_root_dir/"
@@ -95,6 +95,6 @@ test:
     link_threshold: 0.2
     canvas_size: 2240
     mag_ratio: 1.75
-    poly: False
-    cuda: True
-    vis_opt: False
+    poly: True
+    cuda: False
+    vis_opt: True

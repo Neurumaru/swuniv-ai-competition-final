@@ -18,6 +18,7 @@ test.*
 *.jpg
 *.jpeg
 data/
+masks/
 
 **/saved_models/*
 **/data_lmdb_release/*

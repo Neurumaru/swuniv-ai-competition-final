@@ -75,16 +75,18 @@ def save_result_2015(img_file, img, pre_output, pre_box, gt_box, result_dir):
 
     # make result file list
     filename, file_ext = os.path.splitext(os.path.basename(img_file))
-
     for i, box in enumerate(pre_box):
         poly = np.array(box).astype(np.int32).reshape((-1))
         poly = poly.reshape(-1, 2)
-        try:
-            cv2.polylines(
-                img, [poly.reshape((-1, 1, 2))], True, color=(0, 255, 0), thickness=2
-            )
-        except:
-            pass
+        cv2.polylines(
+            img, [poly.reshape((-1, 1, 2))], True, color=(0, 255, 0), thickness=2
+        )
+        # try:
+        #     cv2.polylines(
+        #         img, [poly.reshape((-1, 1, 2))], True, color=(0, 255, 0), thickness=2
+        #     )
+        # except:
+        #     pass
 
     if gt_box is not None:
         for j in range(len(gt_box)):
@@ -293,6 +295,7 @@ def main_eval(model_path, backbone, config, evaluator, result_dir, buffer, model
             config.canvas_size,
             config.mag_ratio,
         )
+        print(polys)
 
         for box in bboxes:
             box_info = {"points": box, "text": "###", "ignore": False}

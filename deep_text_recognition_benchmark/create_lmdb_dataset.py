@@ -6,7 +6,7 @@ import lmdb
 import cv2
 
 import numpy as np
-
+from tqdm import tqdm
 
 def checkImageIsValid(imageBin):
     if imageBin is None:
@@ -35,15 +35,20 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
         checkValid : if true, check the validity of every image
     """
     os.makedirs(outputPath, exist_ok=True)
+    with open(gtFile, 'r', encoding='utf-8') as data:
+        datalist = data.readlines()
+    
+    size = 1048576
+    for data in datalist:
+        imagePath, label = data.strip('\n').split('\t')
+        size = size + os.path.getsize(os.path.join(inputPath, imagePath))
+
     env = lmdb.open(outputPath, map_size=10737418240)
     cache = {}
     cnt = 1
 
-    with open(gtFile, 'r', encoding='utf-8') as data:
-        datalist = data.readlines()
-
     nSamples = len(datalist)
-    for i in range(nSamples):
+    for i in tqdm(range(nSamples)):
         imagePath, label = datalist[i].strip('\n').split('\t')
         imagePath = os.path.join(inputPath, imagePath)
 
@@ -75,7 +80,6 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
         if cnt % 1000 == 0:
             writeCache(env, cache)
             cache = {}
-            print('Written %d / %d' % (cnt, nSamples))
         cnt += 1
     nSamples = cnt-1
     cache['num-samples'.encode()] = str(nSamples).encode()
