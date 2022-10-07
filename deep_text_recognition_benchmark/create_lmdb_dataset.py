@@ -38,7 +38,7 @@ def createDataset(inputPath, gtFile, outputPath, checkValid=True):
     with open(gtFile, 'r', encoding='utf-8') as data:
         datalist = data.readlines()
     
-    size = 1048576
+    size = 104857
     for data in datalist:
         imagePath, label = data.strip('\n').split('\t')
         size = size + os.path.getsize(os.path.join(inputPath, imagePath))
