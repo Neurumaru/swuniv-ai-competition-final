@@ -1,0 +1,1 @@
+docker build -t neurumaru/swuniv-ai-competition-final:0.1 -f %cd%\Dockerfile .
